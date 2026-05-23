@@ -46,10 +46,11 @@ export default function DashboardPage() {
   async function loadData() {
     const today = new Date().toISOString().split("T")[0]
 
-    const [camRes, persRes, evtRes] = await Promise.all([
+    const [camRes, persRes, evtRes, phoneRes] = await Promise.all([
       supabase.from("home_cameras").select("*").eq("is_active", true),
       supabase.from("home_persons").select("*", { count: "exact" }).eq("is_active", true),
       supabase.from("home_presence_events").select("*").gte("event_time", today + "T00:00:00").order("event_time", { ascending: false }).limit(20),
+      fetch(`/api/phone-stats?date=${today}`).then(r => r.ok ? r.json() : { total_minutes: 0 }).catch(() => ({ total_minutes: 0 })),
     ])
 
     setCameras(camRes.data || [])
@@ -58,7 +59,7 @@ export default function DashboardPage() {
       cameras: camRes.data?.length || 0,
       persons: persRes.count || 0,
       todayEvents: evtRes.data?.length || 0,
-      todayPhoneMinutes: 0,
+      todayPhoneMinutes: phoneRes.total_minutes || 0,
     })
     setLoading(false)
   }

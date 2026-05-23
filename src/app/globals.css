@@ -25,3 +25,20 @@ body {
 .animate-in {
   animation: fadeIn 0.2s ease-out;
 }
+
+/* Mobile sidebar slide-in */
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+.sidebar-slide-in {
+  animation: slideInLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Touch-friendly tap targets */
+@media (max-width: 768px) {
+  button, a, [role="button"] {
+    min-height: 44px;
+  }
+}
