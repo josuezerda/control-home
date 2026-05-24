@@ -126,7 +126,7 @@ function CameraCard({ camera, onDelete, onFullscreen }: {
   }, [])
 
   const src = camera.snapshot_url
-    ? `${camera.snapshot_url}?t=${imgKey}`
+    ? `/api/cameras/snapshot?url=${encodeURIComponent(camera.snapshot_url)}&t=${imgKey}`
     : null
 
   return (
@@ -251,7 +251,7 @@ function FullscreenViewer({ camera, onClose }: { camera: CameraItem; onClose: ()
   }, [onClose])
 
   const src = camera.snapshot_url
-    ? `${camera.snapshot_url}?t=${imgKey}`
+    ? `/api/cameras/snapshot?url=${encodeURIComponent(camera.snapshot_url)}&t=${imgKey}`
     : null
 
   return (
