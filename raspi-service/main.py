@@ -244,6 +244,13 @@ def get_alert_config():
 
 def send_whatsapp_alert(message):
     """Envía alerta WhatsApp directo via Meta Cloud API."""
+    # Check if notifications are enabled in config
+    try:
+        config = get_alert_config()
+        if not config.get("notifications_enabled", True):
+            return
+    except Exception:
+        pass
     number_id = os.environ.get("WHATSAPP_NUMBER_ID")
     token = os.environ.get("WHATSAPP_TOKEN")
     phone = os.environ.get("ALERT_PHONE", "")

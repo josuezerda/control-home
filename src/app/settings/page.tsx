@@ -10,6 +10,7 @@ interface Config {
   detection_interval_seconds: number
   unknown_person_alert: boolean
   phone_usage_alert: boolean
+  notifications_enabled: boolean
 }
 
 export default function SettingsPage() {
@@ -19,6 +20,7 @@ export default function SettingsPage() {
     detection_interval_seconds: 2,
     unknown_person_alert: true,
     phone_usage_alert: true,
+    notifications_enabled: false,
   })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -47,8 +49,35 @@ export default function SettingsPage() {
         <p className="text-sm text-gray-500 mt-1">Ajustes del sistema de Control Home</p>
       </div>
 
+      {/* Master Toggle */}
+      <div className={`rounded-2xl backdrop-blur-xl border overflow-hidden transition-all ${
+        config.notifications_enabled 
+          ? "bg-emerald-500/10 border-emerald-500/30" 
+          : "bg-gray-900/50 border-white/5"
+      }`}>
+        <div className="p-5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+              config.notifications_enabled ? "bg-emerald-500/20" : "bg-gray-800"
+            }`}>
+              <Bell size={20} className={config.notifications_enabled ? "text-emerald-400" : "text-gray-500"} />
+            </div>
+            <div>
+              <p className="text-white font-semibold">Notificaciones</p>
+              <p className="text-xs text-gray-400">
+                {config.notifications_enabled ? "Las alertas WhatsApp están activas" : "Todas las alertas están desactivadas"}
+              </p>
+            </div>
+          </div>
+          <button onClick={() => setConfig(c => ({ ...c, notifications_enabled: !c.notifications_enabled }))}
+            className={`w-14 h-8 rounded-full transition-colors ${config.notifications_enabled ? "bg-emerald-500" : "bg-gray-700"}`}>
+            <div className={`w-6 h-6 rounded-full bg-white shadow-lg transition-transform ${config.notifications_enabled ? "translate-x-7" : "translate-x-1"}`} />
+          </button>
+        </div>
+      </div>
+
       {/* Alertas */}
-      <div className="rounded-2xl bg-gray-900/50 backdrop-blur-xl border border-white/5 overflow-hidden">
+      <div className={`rounded-2xl bg-gray-900/50 backdrop-blur-xl border border-white/5 overflow-hidden transition-opacity ${!config.notifications_enabled ? "opacity-40 pointer-events-none" : ""}`}>
         <div className="px-5 py-4 border-b border-white/5 flex items-center gap-2">
           <Bell size={16} className="text-amber-400" />
           <h2 className="font-semibold text-white text-sm">Alertas WhatsApp</h2>
