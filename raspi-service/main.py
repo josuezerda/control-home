@@ -253,7 +253,7 @@ def send_whatsapp_alert(message):
         return
     
     try:
-        url = f"https://graph.facebook.com/v21.0/{number_id}/messages"
+        url = f"https://graph.facebook.com/v19.0/{number_id}/messages"
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json"
@@ -412,11 +412,13 @@ class CameraProcessor:
             import face_recognition
             
             # Reducir tamaño para velocidad
-            small = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
+            small = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
             rgb_small = cv2.cvtColor(small, cv2.COLOR_BGR2RGB)
             
             # Detectar rostros
             locations = face_recognition.face_locations(rgb_small, model="hog")
+            if locations:
+                print(f"  👁️  {self.name}: {len(locations)} cara(s) detectada(s)")
             encodings = face_recognition.face_encodings(rgb_small, locations)
             
             for encoding in encodings:
@@ -443,32 +445,47 @@ class CameraProcessor:
         except Exception as e:
             print(f"  ❌ Error en detección facial: {e}")
     
-    def detect_phone(self, frame):
-        """Detecta uso de celular en el frame usando YOLOv8."""
+    def detect_yolo(self, frame):
+        """Detecta personas y celulares en el frame usando YOLOv8."""
         if self.yolo_model is None:
             return
         
         try:
-            # Reducir resolución para velocidad
             small = cv2.resize(frame, (416, 416))
-            
-            # Inferir con YOLO (class 67 = cell phone en COCO)
-            results = self.yolo_model(small, verbose=False, conf=0.4)
+            results = self.yolo_model(small, verbose=False, conf=0.35)
             
             phone_detected = False
+            person_count = 0
+            
             for result in results:
                 for box in result.boxes:
                     cls_id = int(box.cls[0])
-                    if cls_id == 67:  # cell phone
+                    conf = float(box.conf[0])
+                    if cls_id == 0:  # person
+                        person_count += 1
+                    elif cls_id == 67:  # cell phone
                         phone_detected = True
-                        break
-                if phone_detected:
-                    break
             
+            # Handle person detection
+            self._handle_person_detection(person_count)
             self._handle_phone_detection(phone_detected)
             
         except Exception as e:
-            print(f"  ❌ Error en detección de celular: {e}")
+            print(f"  ❌ Error en detección YOLO: {e}")
+    
+    def _handle_person_detection(self, count):
+        """Maneja detección de personas por YOLO."""
+        now = time.time()
+        key = f"person_{self.name}"
+        last = self.last_detection.get(key, 0)
+        
+        if count > 0 and now - last > 300:
+            print(f"  🚶 {self.name}: {count} persona(s) detectada(s) por YOLO")
+            send_event("person_detected", f"{count} persona(s)", self.name, 
+                       confidence=None, person_id=None, is_known=True)
+            msg = f"Persona detectada en {self.name} - Cantidad: {count} - Hora: {datetime.now().strftime(chr(37)+chr(72)+chr(58)+chr(37)+chr(77)+chr(58)+chr(37)+chr(83))}"
+            send_whatsapp_alert(msg)
+            self.last_detection[key] = now
     
     def _handle_phone_detection(self, detected):
         """Maneja la detección de celular, gestionando sesiones."""
@@ -541,6 +558,8 @@ class CameraProcessor:
         # Solo enviar evento si pasaron más de 5 minutos desde la última detección
         if now - last > 300:
             event_type = "detected" if is_known else "unknown_person"
+            emoji = "🟢" if is_known else "🔴"
+            print(f"  {emoji} {name} en {self.name} (confianza: {confidence:.0%})")
             send_event(event_type, name, self.name, confidence, person_id, is_known)
             self.last_detection[name] = now
             
@@ -646,7 +665,7 @@ def main():
                 except Exception:
                     pass
                 proc.detect_faces(frame)
-                proc.detect_phone(frame)
+                proc.detect_yolo(frame)
         
         # Recargar personas y re-sincronizar encodings periódicamente
         if time.time() - last_reload > 300:
