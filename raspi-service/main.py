@@ -243,23 +243,34 @@ def get_alert_config():
 
 
 def send_whatsapp_alert(message):
-    """Envía alerta WhatsApp a todos los teléfonos configurados."""
-    config = get_alert_config()
-    phones = config.get("alert_phones", [])
+    """Envía alerta WhatsApp directo via Meta Cloud API."""
+    number_id = os.environ.get("WHATSAPP_NUMBER_ID")
+    token = os.environ.get("WHATSAPP_TOKEN")
+    phone = os.environ.get("ALERT_PHONE", "")
     
-    if not phones:
+    if not number_id or not token or not phone:
+        print("  ⚠️  WhatsApp no configurado (faltan vars)")
         return
     
-    for phone in phones:
-        try:
-            requests.post(
-                f"{API_URL}/api/alerts/whatsapp",
-                json={"to": phone, "message": message},
-                timeout=10,
-            )
-            print(f"  📲 Alerta enviada a {phone}")
-        except Exception as e:
-            print(f"  ⚠️  Error enviando alerta a {phone}: {e}")
+    try:
+        url = f"https://graph.facebook.com/v21.0/{number_id}/messages"
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": phone,
+            "type": "text",
+            "text": {"body": message}
+        }
+        resp = requests.post(url, json=payload, headers=headers, timeout=10)
+        if resp.status_code == 200:
+            print(f"  📲 WhatsApp enviado a {phone}")
+        else:
+            print(f"  ⚠️  WhatsApp error: {resp.status_code} {resp.text[:100]}")
+    except Exception as e:
+        print(f"  ⚠️  Error WhatsApp: {e}")
 
 
 # ── Heartbeat ─────────────────────────────────────────────────
@@ -615,6 +626,7 @@ def main():
     print("💓 Heartbeat activo (cada 30s)")
     
     # Recargar personas cada 5 minutos
+    os.makedirs("/home/pi/control-home/snapshots", exist_ok=True)
     last_reload = time.time()
     
     while running:
@@ -624,6 +636,15 @@ def main():
             
             frame = proc.grab_frame()
             if frame is not None:
+                # Save snapshot for preview server
+                try:
+                    import re as _re
+                    _m = _re.search(r"@(\d+\.\d+\.\d+\.\d+)", proc.rtsp_url)
+                    if _m:
+                        _ip = _m.group(1)
+                        cv2.imwrite(f"/home/pi/control-home/snapshots/{_ip}.jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
+                except Exception:
+                    pass
                 proc.detect_faces(frame)
                 proc.detect_phone(frame)
         
